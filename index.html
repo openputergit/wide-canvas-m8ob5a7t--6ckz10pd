@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library & Audit Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 50;
+            overflow-y: auto;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #0d9488;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-teal-600 text-white p-4">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
+            <h1 class="text-2xl font-bold mb-4 md:mb-0">Management System</h1>
+            <div class="flex flex-wrap justify-center gap-2">
+                <button id="libraryTabBtn" class="bg-white text-teal-600 px-3 py-2 rounded transition hover:bg-teal-100">Library</button>
+                <button id="auditTabBtn" class="bg-teal-700 text-white px-3 py-2 rounded transition hover:bg-teal-800">Audit</button>
+                <div id="libraryButtons" class="flex gap-2">
+                    <button onclick="showModal('addBookModal')" class="bg-white text-teal-600 px-3 py-2 rounded transition hover:bg-teal-100">Add Book</button>
+                    <button onclick="showModal('purchaseHistoryModal')" class="bg-white text-teal-600 px-3 py-2 rounded transition hover:bg-teal-100">Purchase History</button>
+                </div>
+                <div id="auditButtons" class="hidden flex gap-2">
+                    <button id="roleSelectBtn" onclick="showModal('roleSelectModal')" class="bg-white text-teal-600 px-3 py-2 rounded transition hover:bg-teal-100">Select Role</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Library Section -->
+    <div id="libraryContent" class="tab-content active container mx-auto p-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="bookList">
+            <!-- Books will be dynamically added here -->
+            <div class="col-span-full text-center p-8" id="bookListLoader">
+                <div class="loader"></div>
+                <p class="mt-4">Loading books...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Section -->
+    <div id="auditContent" class="tab-content container mx-auto p-4">
+        <div id="roleMessage" class="bg-yellow-100 text-yellow-800 p-4 rounded mb-4">
+            Please select your role to continue with the audit process.
+        </div>
+
+        <!-- Admin View -->
+        <div id="adminView" class="hidden">
+            <h2 class="text-2xl font-bold mb-4">Audit Administration</h2>
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <h3 class="text-xl font-semibold mb-2">ISO 27001 Audit Dashboard</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h4 class="font-medium">Pending Audits</h4>
+                        <p class="text-2xl font-bold" id="pendingAudits">0</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h4 class="font-medium">Completed Audits</h4>
+                        <p class="text-2xl font-bold" id="completedAudits">0</p>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <h4 class="font-medium">Certified Companies</h4>
+                        <p class="text-2xl font-bold" id="certifiedCompanies">0</p>
+                    </div>
+                </div>
+                <button onclick="showModal('createAuditModal')" class="bg-teal-600 text-white px-4 py-2 rounded hover:bg-teal-700">Create New Audit</button>
+            </div>
+
+            <h3 class="text-xl font-semibold mb-2">Active Audits</h3>
+            <div id="adminAuditList" class="space-y-4">
+                <!-- Active audits will be listed here -->
+                <div class="text-center p-4" id="adminAuditsLoader">
+                    <div class="loader"></div>
+                    <p class="mt-2">Loading audits...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auditor View -->
+        <div id="auditorView" class="hidden">
+            <h2 class="text-2xl font-bold mb-4">Auditor Dashboard</h2>
+            
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <h3 class="text-xl font-semibold mb-2">Your Assigned Audits</h3>
+                <div id="auditorAuditList" class="space-y-4">
+                    <!-- Assigned audits will be listed here -->
+                    <div class="text-center p-4" id="auditorAuditsLoader">
+                        <div class="loader"></div>
+                        <p class="mt-2">Loading assigned audits...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auditee View -->
+        <div id="auditeeView" class="hidden">
+            <h2 class="text-2xl font-bold mb-4">Auditee Dashboard</h2>
+            
+            <div class="bg-white rounded-lg shadow p-4 mb-6">
+                <h3 class="text-xl font-semibold mb-2">Your Audits</h3>
+                <div id="auditeeAuditList" class="space-y-4">
+                    <!-- Auditee's audits will be listed here -->
+                    <div class="text-center p-4" id="auditeeAuditsLoader">
+                        <div class="loader"></div>
+                        <p class="mt-2">Loading your audits...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role Selection Modal -->
+    <div id="roleSelectModal" class="modal">
+        <div class="bg-white p-6 rounded-lg w-96 mx-auto mt-20">
+            <h2 class="text-2xl font-bold mb-4">Select Your Role</h2>
+            <div class="space-y-4">
+                <div class="flex items-center space-x-2">
+                    <input type="radio" name="role" id="adminRole" value="admin" class="h-4 w-4">
+                    <label for="adminRole" class="text-lg">Admin</label>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="radio" name="role" id="auditorRole" value="auditor" class="h-4 w-4">
+                    <label for="auditorRole" class="text-lg">Auditor</label>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <input type="radio" name="role" id="auditeeRole" value="auditee" class="h-4 w-4">
+                    <label for="auditeeRole" class="text-lg">Auditee</label>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="hideModal('roleSelectModal')" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+                    <button type="button" onclick="setUserRole()" class="px-4 py-2 bg-teal-600 text-white rounded">Select</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Book Modal -->
+    <div id="addBookModal" class="modal">
+        <div class="bg-white p-6 rounded-lg w-96 mx-auto mt-20">
+            <h2 class="text-2xl font-bold mb-4">Add New Book</h2>
+            <form id="addBookForm" class="space-y-4">
+                <input type="text" placeholder="Book Title" id="bookTitle" class="w-full p-2 border rounded" required>
+                <input type="text" placeholder="Author" id="bookAuthor" class="w-full p-2 border rounded" required>
+                <input type="number" placeholder="Price" id="bookPrice" class="w-full p-2 border rounded" required>
+                <input type="number" placeholder="Quantity" id="bookQuantity" class="w-full p-2 border rounded" required>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="hideModal('addBookModal')" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded">Add Book</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Purchase History Modal -->
+    <div id="purchaseHistoryModal" class="modal">
+        <div class="bg-white p-6 rounded-lg w-full max-w-4xl mx-auto mt-20">
+            <h2 class="text-2xl font-bold mb-4">Purchase History</h2>
+            <div id="purchaseHistory" class="space-y-2">
+                <!-- Purchase history will be dynamically added here -->
+                <div class="text-center p-4" id="purchaseHistoryLoader">
+                    <div class="loader"></div>
+                    <p class="mt-2">Loading purchase history...</p>
+                </div>
+            </div>
+            <button onclick="hideModal('purchaseHistoryModal')" class="mt-4 px-4 py-2 bg-gray-200 rounded">Close</button>
+        </div>
+    </div>
+
+    <!-- Create Audit Modal -->
+    <div id="createAuditModal" class="modal">
+        <div class="bg-white p-6 rounded-lg w-full max-w-lg mx-auto mt-20">
+            <h2 class="text-2xl font-bold mb-4">Create New ISO 27001 Audit</h2>
+            <form id="createAuditForm" class="space-y-4">
+                <div class="space-y-2">
+                    <label for="auditName" class="font-medium">Audit Name</label>
+                    <input type="text" id="auditName" placeholder="e.g. Annual ISO 27001 Audit" class="w-full p-2 border rounded" required>
+                </div>
+                <div class="space-y-2">
+                    <label for="companyName" class="font-medium">Company Name</label>
+                    <input type="text" id="companyName" placeholder="Company being audited" class="w-full p-2 border rounded" required>
+                </div>
+                <div class="space-y-2">
+                    <label for="auditeeEmail" class="font-medium">Auditee Email</label>
+                    <input type="email" id="auditeeEmail" placeholder="Email of the auditee" class="w-full p-2 border rounded" required>
+                </div>
+                <div class="space-y-2">
+                    <label for="auditorEmail" class="font-medium">Auditor Email</label>
+                    <input type="email" id="auditorEmail" placeholder="Email of the auditor" class="w-full p-2 border rounded" required>
+                </div>
+                <div class="space-y-2">
+                    <label for="auditDeadline" class="font-medium">Deadline</label>
+                    <input type="date" id="auditDeadline" class="w-full p-2 border rounded" required>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="hideModal('createAuditModal')" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded">Create Audit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Audit Details Modal -->
+    <div id="auditDetailsModal" class="modal">
+        <div class="bg-white p-6 rounded-lg w-full max-w-4xl mx-auto my-10">
+            <h2 class="text-2xl font-bold mb-4" id="auditDetailsTitle">Audit Details</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <p class="text-sm text-gray-500">Company</p>
+                    <p class="font-medium" id="auditDetailsCompany"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Status</p>
+                    <p class="font-medium" id="auditDetailsStatus"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Deadline</p>
+                    <p class="font-medium" id="auditDetailsDeadline"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Created</p>
+                    <p class="font-medium" id="auditDetailsCreated"></p>
+                </div>
+            </div>
+
+            <div class="mb-6" id="auditorActionsPanel">
+                <h3 class="text-lg font-semibold mb-2">Auditor Actions</h3>
+                <div class="flex space-x-2">
+                    <button id="issueCertificateBtn" class="px-4 py-2 bg-green-600 text-white rounded hidden">Issue Certificate</button>
+                    <button onclick="hideModal('auditDetailsModal')" class="px-4 py-2 bg-gray-200 rounded">Close</button>
+                </div>
+            </div>
+
+            <div class="mb-6" id="adminActionsPanel">
+                <h3 class="text-lg font-semibold mb-2">Admin Actions</h3>
+                <div class="flex space-x-2">
+                    <button id="deleteAuditBtn" class="px-4 py-2 bg-red-600 text-white rounded">Delete Audit</button>
+                    <button onclick="hideModal('auditDetailsModal')" class="px-4 py-2 bg-gray-200 rounded">Close</button>
+                </div>
+            </div>
+
+            <h3 class="text-lg font-semibold mb-2">ISO 27001 Clauses</h3>
+            <div class="overflow-y-auto max-h-96 bg-gray-50 p-4 rounded" id="clausesList">
+                <!-- Clauses will be listed here -->
+                <div class="text-center p-4" id="clausesLoader">
+                    <div class="loader"></div>
+                    <p class="mt-2">Loading clauses...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Evidence Upload Modal -->
+    <div id="evidenceUploadModal" class="modal">
+        <div class="bg-white p-6 rounded-lg w-full max-w-4xl mx-auto my-10">
+            <h2 class="text-2xl font-bold mb-2" id="evidenceClauseName">Upload Evidence</h2>
+            <p class="text-gray-600 mb-4" id="evidenceClauseDescription"></p>
+            
+            <div id="evidenceHistory" class="mb-6 space-y-3">
+                <h3 class="text-lg font-semibold">Evidence History</h3>
+                <div class="text-center p-4" id="evidenceHistoryLoader">
+                    <div class="loader"></div>
+                    <p class="mt-2">Loading evidence history...</p>
+                </div>
+                <!-- Evidence history will be shown here -->
+            </div>
+            
+            <div id="uploadEvidenceForm" class="space-y-4 mb-4">
+                <h3 class="text-lg font-semibold">Upload New Evidence</h3>
+                <div>
+                    <label for="evidenceDescription" class="block mb-1">Description</label>
+                    <textarea id="evidenceDescription" rows="3" class="w-full p-2 border rounded" placeholder="Describe your evidence..."></textarea>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="uploadEvidenceBtn" class="px-4 py-2 bg-teal-600 text-white rounded">Submit Evidence</button>
+                    <button onclick="hideModal('evidenceUploadModal')" class="px-4 py-2 bg-gray-200 rounded">Close</button>
+                </div>
+            </div>
+
+            <div id="reviewEvidenceForm" class="space-y-4 mb-4 hidden">
+                <h3 class="text-lg font-semibold">Review Evidence</h3>
+                <div>
+                    <label for="reviewComment" class="block mb-1">Review Comment</label>
+                    <textarea id="reviewComment" rows="3" class="w-full p-2 border rounded" placeholder="Add your review comments..."></textarea>
+                </div>
+                <div class="flex space-x-2">
+                    <button id="approveEvidenceBtn" class="px-4 py-2 bg-green-600 text-white rounded">Approve</button>
+                    <button id="rejectEvidenceBtn" class="px-4 py-2 bg-red-600 text-white rounded">Needs Improvement</button>
+                    <button onclick="hideModal('evidenceUploadModal')" class="px-4 py-2 bg-gray-200 rounded">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUserRole = null;
+        let currentAuditId = null;
+        let currentClauseId = null;
+        let currentEvidenceId = null;
+        const appSlug = "library-audit-system-657890";
+        
+        // Initialize MongoDB collections if empty
+        async function initializeDatabase() {
+            // Check if books collection exists
+            try {
+                const booksResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'read',
+                        collection: 'books'
+                    })
+                });
+                
+                const booksResult = await booksResponse.json();
+                
+                if (!booksResult.result || booksResult.result.length === 0) {
+                    // Add sample books
+                    const sampleBooks = [
+                        { title: "The Great Gatsby", author: "F. Scott Fitzgerald", price: 249, quantity: 15 },
+                        { title: "To Kill a Mockingbird", author: "Harper Lee", price: 299, quantity: 10 },
+                        { title: "1984", author: "George Orwell", price: 199, quantity: 8 }
+                    ];
+                    
+                    for (const book of sampleBooks) {
+                        await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                appSlug: appSlug,
+                                action: 'create',
+                                collection: 'books',
+                                data: book
+                            })
+                        });
+                    }
+                }
+
+                // Check if ISO 27001 clauses exist
+                const clausesResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'read',
+                        collection: 'isoClauses'
+                    })
+                });
+                
+                const clausesResult = await clausesResponse.json();
+                
+                if (!clausesResult.result || clausesResult.result.length === 0) {
+                    // Add sample ISO 27001 clauses
+                    const sampleClauses = [
+                        { name: "Information Security Policy", description: "Organization should define an information security policy that is approved by management and communicated to employees." },
+                        { name: "Access Control", description: "There should be a formal access control policy to ensure appropriate access to information systems." },
+                        { name: "Physical Security", description: "Physical security measures should protect organization's facilities and equipment from unauthorized access and damage." },
+                        { name: "Incident Management", description: "Procedures should be established to ensure quick, effective, and orderly response to information security incidents." },
+                        { name: "Business Continuity", description: "Plans should be developed and implemented to maintain or restore operations after critical incidents." }
+                    ];
+                    
+                    for (const clause of sampleClauses) {
+                        await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                appSlug: appSlug,
+                                action: 'create',
+                                collection: 'isoClauses',
+                                data: clause
+                            })
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error initializing database:", error);
+            }
+        }
+
+        // Tab switching functionality
+        document.getElementById('libraryTabBtn').addEventListener('click', function() {
+            document.getElementById('libraryContent').classList.add('active');
+            document.getElementById('auditContent').classList.remove('active');
+            document.getElementById('libraryButtons').classList.remove('hidden');
+            document.getElementById('auditButtons').classList.add('hidden');
+            this.classList.remove('bg-teal-700');
+            this.classList.add('bg-white', 'text-teal-600');
+            document.getElementById('auditTabBtn').classList.add('bg-teal-700', 'text-white');
+            document.getElementById('auditTabBtn').classList.remove('bg-white', 'text-teal-600');
+            displayBooks();
+        });
+
+        document.getElementById('auditTabBtn').addEventListener('click', function() {
+            document.getElementById('auditContent').classList.add('active');
+            document.getElementById('libraryContent').classList.remove('active');
+            document.getElementById('libraryButtons').classList.add('hidden');
+            document.getElementById('auditButtons').classList.remove('hidden');
+            this.classList.remove('bg-teal-700');
+            this.classList.add('bg-white', 'text-teal-600');
+            document.getElementById('libraryTabBtn').classList.add('bg-teal-700', 'text-white');
+            document.getElementById('libraryTabBtn').classList.remove('bg-white', 'text-teal-600');
+            loadAuditDashboard();
+        });
+
+        // Modal Management Functions
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Set user role
+        function setUserRole() {
+            const selectedRole = document.querySelector('input[name="role"]:checked');
+            if (!selectedRole) {
+                alert('Please select a role');
+                return;
+            }
+            
+            currentUserRole = selectedRole.value;
+            hideModal('roleSelectModal');
+            
+            // Hide all role-specific views
+            document.getElementById('adminView').classList.add('hidden');
+            document.getElementById('auditorView').classList.add('hidden');
+            document.getElementById('auditeeView').classList.add('hidden');
+            document.getElementById('roleMessage').classList.add('hidden');
+            
+            // Show the appropriate view based on role
+            document.getElementById(`${currentUserRole}View`).classList.remove('hidden');
+            
+            // Load data for the specific role
+            loadAuditDashboard();
+        }
+
+        // Load audit dashboard based on role
+        async function loadAuditDashboard() {
+            if (!currentUserRole) return;
+            
+            try {
+                // For admin, load statistics
+                if (currentUserRole === 'admin') {
+                    document.getElementById('adminAuditsLoader').classList.remove('hidden');
+                    
+                    // Fetch all audits
+                    const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug: appSlug,
+                            action: 'read',
+                            collection: 'audits'
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        const audits = result.result || [];
+                        
+                        // Update dashboard stats
+                        document.getElementById('pendingAudits').textContent = audits.filter(a => a.status !== 'certified').length;
+                        document.getElementById('completedAudits').textContent = audits.length;
+                        document.getElementById('certifiedCompanies').textContent = audits.filter(a => a.status === 'certified').length;
+                        
+                        // Display audit list
+                        displayAdminAudits(audits);
+                    }
+                    
+                    document.getElementById('adminAuditsLoader').classList.add('hidden');
+                }
+                
+                // For auditor, load assigned audits
+                else if (currentUserRole === 'auditor') {
+                    document.getElementById('auditorAuditsLoader').classList.remove('hidden');
+                    
+                    // Fetch audits assigned to this auditor
+                    const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug: appSlug,
+                            action: 'read',
+                            collection: 'audits',
+                            conditions: {
+                                auditorEmail: sessionStorage.getItem('userEmail') || 'auditor@example.com'
+                            }
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        const audits = result.result || [];
+                        displayAuditorAudits(audits);
+                    }
+                    
+                    document.getElementById('auditorAuditsLoader').classList.add('hidden');
+                }
+                
+                // For auditee, load their audits
+                else if (currentUserRole === 'auditee') {
+                    document.getElementById('auditeeAuditsLoader').classList.remove('hidden');
+                    
+                    // Fetch audits assigned to this auditee
+                    const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug: appSlug,
+                            action: 'read',
+                            collection: 'audits',
+                            conditions: {
+                                auditeeEmail: sessionStorage.getItem('userEmail') || 'auditee@example.com'
+                            }
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        const audits = result.result || [];
+                        displayAuditeeAudits(audits);
+                    }
+                    
+                    document.getElementById('auditeeAuditsLoader').classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading audit dashboard:', error);
+            }
+        }
+
+        // Display functions for different user roles
+        function displayAdminAudits(audits) {
+            const auditListElement = document.getElementById('adminAuditList');
+            
+            if (audits.length === 0) {
+                auditListElement.innerHTML = `
+                    <div class="bg-gray-100 rounded p-6 text-center">
+                        <p class="text-gray-500">No audits found. Create a new audit to get started.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            auditListElement.innerHTML = audits.map(audit => `
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold text-lg">${audit.name}</h4>
+                            <p class="text-gray-600">${audit.companyName}</p>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <span class="px-2 py-1 text-xs rounded ${
+                                    audit.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
+                                    audit.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+                                    audit.status === 'certified' ? 'bg-green-100 text-green-800' :
+                                    'bg-gray-100 text-gray-800'
+                                }">${
+                                    audit.status === 'in-progress' ? 'In Progress' : 
+                                    audit.status === 'review' ? 'Under Review' :
+                                    audit.status === 'certified' ? 'Certified' :
+                                    'Unknown'
+                                }</span>
+                                <span class="text-sm text-gray-500">Deadline: ${new Date(audit.deadline).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <button 
+                            onclick="viewAuditDetails('${audit._id}')" 
+                            class="px-3 py-1 bg-teal-600 text-white text-sm rounded">
+                            View Details
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayAuditorAudits(audits) {
+            const auditListElement = document.getElementById('auditorAuditList');
+            
+            if (audits.length === 0) {
+                auditListElement.innerHTML = `
+                    <div class="bg-gray-100 rounded p-6 text-center">
+                        <p class="text-gray-500">No audits are currently assigned to you.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            auditListElement.innerHTML = audits.map(audit => `
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold text-lg">${audit.name}</h4>
+                            <p class="text-gray-600">${audit.companyName}</p>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <span class="px-2 py-1 text-xs rounded ${
+                                    audit.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
+                                    audit.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+                                    audit.status === 'certified' ? 'bg-green-100 text-green-800' :
+                                    'bg-gray-100 text-gray-800'
+                                }">${
+                                    audit.status === 'in-progress' ? 'In Progress' : 
+                                    audit.status === 'review' ? 'Under Review' :
+                                    audit.status === 'certified' ? 'Certified' :
+                                    'Unknown'
+                                }</span>
+                                <span class="text-sm text-gray-500">Deadline: ${new Date(audit.deadline).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <button 
+                            onclick="viewAuditDetails('${audit._id}')" 
+                            class="px-3 py-1 bg-teal-600 text-white text-sm rounded">
+                            Review Audit
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayAuditeeAudits(audits) {
+            const auditListElement = document.getElementById('auditeeAuditList');
+            
+            if (audits.length === 0) {
+                auditListElement.innerHTML = `
+                    <div class="bg-gray-100 rounded p-6 text-center">
+                        <p class="text-gray-500">No audits are currently available for you.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            auditListElement.innerHTML = audits.map(audit => `
+                <div class="bg-white rounded-lg shadow p-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-semibold text-lg">${audit.name}</h4>
+                            <p class="text-gray-600">${audit.companyName}</p>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <span class="px-2 py-1 text-xs rounded ${
+                                    audit.status === 'in-progress' ? 'bg-blue-100 text-blue-800' : 
+                                    audit.status === 'review' ? 'bg-yellow-100 text-yellow-800' :
+                                    audit.status === 'certified' ? 'bg-green-100 text-green-800' :
+                                    'bg-gray-100 text-gray-800'
+                                }">${
+                                    audit.status === 'in-progress' ? 'In Progress' : 
+                                    audit.status === 'review' ? 'Under Review' :
+                                    audit.status === 'certified' ? 'Certified' :
+                                    'Unknown'
+                                }</span>
+                                <span class="text-sm text-gray-500">Deadline: ${new Date(audit.deadline).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                        <button 
+                            onclick="viewAuditDetails('${audit._id}')" 
+                            class="px-3 py-1 bg-teal-600 text-white text-sm rounded">
+                            Submit Evidence
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // View audit details
+        async function viewAuditDetails(auditId) {
+            currentAuditId = auditId;
+            
+            // Show loading state
+            document.getElementById('clausesLoader').classList.remove('hidden');
+            document.getElementById('clausesList').innerHTML = '';
+            showModal('auditDetailsModal');
+            
+            try {
+                // Fetch audit details
+                const auditResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'read',
+                        collection: 'audits',
+                        conditions: {
+                            _id: auditId
+                        }
+                    })
+                });
+                
+                const auditResult = await auditResponse.json();
+                
+                if (auditResult.success && auditResult.result.length > 0) {
+                    const audit = auditResult.result[0];
+                    
+                    // Update audit details in the modal
+                    document.getElementById('auditDetailsTitle').textContent = audit.name;
+                    document.getElementById('auditDetailsCompany').textContent = audit.companyName;
+                    document.getElementById('auditDetailsStatus').textContent = audit.status === 'in-progress' ? 'In Progress' : 
+                                                                              audit.status === 'review' ? 'Under Review' :
+                                                                              audit.status === 'certified' ? 'Certified' : 'Unknown';
+                    document.getElementById('auditDetailsDeadline').textContent = new Date(audit.deadline).toLocaleDateString();
+                    document.getElementById('auditDetailsCreated').textContent = new Date(audit.createdAt || Date.now()).toLocaleDateString();
+                    
+                    // Show/hide appropriate action panels based on role
+                    document.getElementById('adminActionsPanel').style.display = currentUserRole === 'admin' ? 'block' : 'none';
+                    document.getElementById('auditorActionsPanel').style.display = currentUserRole === 'auditor' ? 'block' : 'none';
+                    
+                    // Show issue certificate button only if audit is in review status
+                    if (currentUserRole === 'auditor' && audit.status === 'review') {
+                        document.getElementById('issueCertificateBtn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('issueCertificateBtn').classList.add('hidden');
+                    }
+                    
+                    // Setup event handlers for admin/auditor buttons
+                    if (currentUserRole === 'admin') {
+                        document.getElementById('deleteAuditBtn').onclick = () => deleteAudit(auditId);
+                    }
+                    
+                    if (currentUserRole === 'auditor') {
+                        document.getElementById('issueCertificateBtn').onclick = () => issueCertificate(auditId);
+                    }
+                    
+                    // Fetch ISO clauses
+                    const clausesResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug: appSlug,
+                            action: 'read',
+                            collection: 'isoClauses'
+                        })
+                    });
+                    
+                    const clausesResult = await clausesResponse.json();
+                    
+                    if (clausesResult.success) {
+                        const clauses = clausesResult.result || [];
+                        
+                        // Display clauses
+                        displayAuditClauses(clauses, audit);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading audit details:', error);
+            }
+            
+            document.getElementById('clausesLoader').classList.add('hidden');
+        }
+
+        // Display audit clauses
+        async function displayAuditClauses(clauses, audit) {
+            const clausesListElement = document.getElementById('clausesList');
+            
+            // Fetch evidence for this audit
+            const evidenceResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    appSlug: appSlug,
+                    action: 'read',
+                    collection: 'evidence',
+                    conditions: {
+                        auditId: currentAuditId
+                    }
+                })
+            });
+            
+            const evidenceResult = await evidenceResponse.json();
+            const evidenceItems = evidenceResult.success ? evidenceResult.result || [] : [];
+            
+            clausesListElement.innerHTML = clauses.map(clause => {
+                const clauseEvidence = evidenceItems.filter(e => e.clauseId === clause._id);
+                const latestEvidence = clauseEvidence.length > 0 ? 
+                    clauseEvidence.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] : null;
+                
+                const statusClass = latestEvidence ? 
+                    (latestEvidence.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                     latestEvidence.status === 'rejected' ? 'bg-red-100 text-red-800' : 
+                     'bg-yellow-100 text-yellow-800') : 
+                    'bg-gray-100 text-gray-800';
+                
+                const statusText = latestEvidence ? 
+                    (latestEvidence.status === 'approved' ? 'Approved' : 
+                     latestEvidence.status === 'rejected' ? 'Needs Improvement' : 
+                     'Pending Review') : 
+                    'No Evidence';
+                
+                return `
+                    <div class="p-3 border-b last:border-b-0">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-semibold">${clause.name}</h4>
+                                <p class="text-sm text-gray-600">${clause.description}</p>
+                                <span class="inline-block mt-2 px-2 py-1 text-xs rounded ${statusClass}">
+                                    ${statusText}
+                                </span>
+                            </div>
+                            <button 
+                                onclick="handleClauseAction('${clause._id}', '${clause.name}', '${clause.description}')"
+                                class="px-3 py-1 bg-teal-600 text-white text-sm rounded hover:bg-teal-700">
+                                ${currentUserRole === 'auditee' ? 'Upload Evidence' : 'Review Evidence'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Handle clause action (upload or review evidence)
+        async function handleClauseAction(clauseId, clauseName, clauseDescription) {
+            currentClauseId = clauseId;
+            
+            // Set clause details in the modal
+            document.getElementById('evidenceClauseName').textContent = clauseName;
+            document.getElementById('evidenceClauseDescription').textContent = clauseDescription;
+            
+            // Show appropriate form based on role
+            document.getElementById('uploadEvidenceForm').style.display = currentUserRole === 'auditee' ? 'block' : 'none';
+            document.getElementById('reviewEvidenceForm').style.display = currentUserRole === 'auditor' ? 'block' : 'none';
+            
+            // Load evidence history
+            document.getElementById('evidenceHistoryLoader').classList.remove('hidden');
+            document.getElementById('evidenceHistory').innerHTML = '<h3 class="text-lg font-semibold">Evidence History</h3>';
+            
+            try {
+                const evidenceResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'read',
+                        collection: 'evidence',
+                        conditions: {
+                            auditId: currentAuditId,
+                            clauseId: clauseId
+                        }
+                    })
+                });
+                
+                const evidenceResult = await evidenceResponse.json();
+                
+                if (evidenceResult.success) {
+                    const evidenceItems = evidenceResult.result || [];
+                    displayEvidenceHistory(evidenceItems);
+                }
+            } catch (error) {
+                console.error('Error loading evidence:', error);
+            }
+            
+            document.getElementById('evidenceHistoryLoader').classList.add('hidden');
+            
+            // Setup event handlers for evidence actions
+            if (currentUserRole === 'auditee') {
+                document.getElementById('uploadEvidenceBtn').onclick = submitEvidence;
+            } else if (currentUserRole === 'auditor') {
+                document.getElementById('approveEvidenceBtn').onclick = () => reviewEvidence('approved');
+                document.getElementById('rejectEvidenceBtn').onclick = () => reviewEvidence('rejected');
+            }
+            
+            hideModal('auditDetailsModal');
+            showModal('evidenceUploadModal');
+        }
+
+        // Display evidence history
+        function displayEvidenceHistory(evidenceItems) {
+            const evidenceHistoryDiv = document.getElementById('evidenceHistory');
+            
+            if (evidenceItems.length === 0) {
+                evidenceHistoryDiv.innerHTML = `
+                    <h3 class="text-lg font-semibold">Evidence History</h3>
+                    <div class="bg-gray-50 p-4 rounded text-center">
+                        <p class="text-gray-500">No evidence has been submitted yet.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort evidence by date (newest first)
+            evidenceItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            const historyHTML = evidenceItems.map(evidence => {
+                const statusClass = evidence.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                  evidence.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                                  'bg-red-100 text-red-800';
+                
+                const statusText = evidence.status === 'pending' ? 'Pending Review' : 
+                                 evidence.status === 'approved' ? 'Approved' : 
+                                 'Needs Improvement';
+                
+                return `
+                    <div class="bg-white border rounded p-3 mb-3" data-evidence-id="${evidence._id}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="inline-block px-2 py-1 text-xs rounded ${statusClass}">
+                                    ${statusText}
+                                </span>
+                                <p class="text-sm text-gray-500">Submitted on: ${new Date(evidence.createdAt).toLocaleString()}</p>
+                            </div>
+                        </div>
+                        <p class="mt-2">${evidence.description}</p>
+                        ${evidence.reviewComment ? `
+                            <div class="mt-3 bg-gray-50 p-2 rounded">
+                                <p class="text-sm font-medium">Auditor Comment:</p>
+                                <p class="text-sm">${evidence.reviewComment}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            evidenceHistoryDiv.innerHTML = `
+                <h3 class="text-lg font-semibold mb-3">Evidence History</h3>
+                ${historyHTML}
+            `;
+            
+            // If there's evidence and user is auditor, select the first one for review
+            if (evidenceItems.length > 0 && currentUserRole === 'auditor') {
+                currentEvidenceId = evidenceItems[0]._id;
+            }
+        }
+
+        // Submit evidence (for auditee)
+        async function submitEvidence() {
+            const description = document.getElementById('evidenceDescription').value.trim();
+            
+            if (!description) {
+                alert('Please provide a description of your evidence');
+                return;
+            }
+            
+            try {
+                // Create evidence record
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'create',
+                        collection: 'evidence',
+                        data: {
+                            auditId: currentAuditId,
+                            clauseId: currentClauseId,
+                            description: description,
+                            status: 'pending',
+                            createdAt: new Date().toISOString(),
+                            createdBy: sessionStorage.getItem('userEmail') || 'auditee@example.com'
+                        }
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update audit status to "review" if it was "in-progress"
+                    await updateAuditStatusToReview();
+                    
+                    document.getElementById('evidenceDescription').value = '';
+                    handleClauseAction(currentClauseId, 
+                                      document.getElementById('evidenceClauseName').textContent, 
+                                      document.getElementById('evidenceClauseDescription').textContent);
+                    
+                    alert('Evidence submitted successfully!');
+                }
+            } catch (error) {
+                console.error('Error submitting evidence:', error);
+                alert('Error submitting evidence. Please try again.');
+            }
+        }
+
+        // Update audit status to "review"
+        async function updateAuditStatusToReview() {
+            try {
+                // First check current audit status
+                const auditResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'read',
+                        collection: 'audits',
+                        conditions: {
+                            _id: currentAuditId
+                        }
+                    })
+                });
+                
+                const auditResult = await auditResponse.json();
+                
+                if (auditResult.success && auditResult.result.length > 0) {
+                    const audit = auditResult.result[0];
+                    
+                    // Only update if status is "in-progress"
+                    if (audit.status === 'in-progress') {
+                        await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                appSlug: appSlug,
+                                action: 'update',
+                                collection: 'audits',
+                                conditions: {
+                                    _id: currentAuditId
+                                },
+                                data: {
+                                    status: 'review'
+                                }
+                            })
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error updating audit status:', error);
+            }
+        }
+
+        // Review evidence (for auditor)
+        async function reviewEvidence(status) {
+            if (!currentEvidenceId) {
+                alert('No evidence selected for review');
+                return;
+            }
+            
+            const reviewComment = document.getElementById('reviewComment').value.trim();
+            
+            if (status === 'rejected' && !reviewComment) {
+                alert('Please provide feedback when requesting improvements');
+                return;
+            }
+            
+            try {
+                // Update evidence status
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'update',
+                        collection: 'evidence',
+                        conditions: {
+                            _id: currentEvidenceId
+                        },
+                        data: {
+                            status: status,
+                            reviewComment: reviewComment,
+                            reviewedAt: new Date().toISOString(),
+                            reviewedBy: sessionStorage.getItem('userEmail') || 'auditor@example.com'
+                        }
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('reviewComment').value = '';
+                    handleClauseAction(currentClauseId, 
+                                      document.getElementById('evidenceClauseName').textContent, 
+                                      document.getElementById('evidenceClauseDescription').textContent);
+                    
+                    alert('Evidence reviewed successfully!');
+                }
+            } catch (error) {
+                console.error('Error reviewing evidence:', error);
+                alert('Error reviewing evidence. Please try again.');
+            }
+        }
+
+        // Issue certificate
+        async function issueCertificate(auditId) {
+            if (confirm('Are you sure you want to issue a certificate for this audit?')) {
+                try {
+                    // Check if all clauses have approved evidence
+                    const clausesResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug: appSlug,
+                            action: 'read',
+                            collection: 'isoClauses'
+                        })
+                    });
+                    
+                    const evidenceResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug: appSlug,
+                            action: 'read',
+                            collection: 'evidence',
+                            conditions: {
+                                auditId: auditId
+                            }
+                        })
+                    });
+                    
+                    const [clausesResult, evidenceResult] = await Promise.all([clausesResponse.json(), evidenceResponse.json()]);
+                    
+                    if (clausesResult.success && evidenceResult.success) {
+                        const clauses = clausesResult.result || [];
+                        const evidenceItems = evidenceResult.result || [];
+                        
+                        // Group evidence by clause
+                        const evidenceByClause = {};
+                        evidenceItems.forEach(evidence => {
+                            if (!evidenceByClause[evidence.clauseId]) {
+                                evidenceByClause[evidence.clauseId] = [];
+                            }
+                            evidenceByClause[evidence.clauseId].push(evidence);
+                        });
+                        
+                        // Check if all clauses have approved evidence
+                        const incompleteClause = clauses.find(clause => {
+                            const clauseEvidence = evidenceByClause[clause._id] || [];
+                            // Sort by date to get latest evidence
+                            clauseEvidence.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                            // Check if latest evidence is approved
+                            return !clauseEvidence.length || clauseEvidence[0].status !== 'approved';
+                        });
+                        
+                        if (incompleteClause) {
+                            alert(`All clauses must have approved evidence before issuing a certificate. Missing approval for: ${incompleteClause.name}`);
+                            return;
+                        }
+                        
+                        // Update audit status to certified
+                        const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                appSlug: appSlug,
+                                action: 'update',
+                                collection: 'audits',
+                                conditions: {
+                                    _id: auditId
+                                },
+                                data: {
+                                    status: 'certified',
+                                    certifiedAt: new Date().toISOString(),
+                                    certifiedBy: sessionStorage.getItem('userEmail') || 'auditor@example.com'
+                                }
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            alert('Certificate issued successfully!');
+                            hideModal('auditDetailsModal');
+                            loadAuditDashboard();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error issuing certificate:', error);
+                    alert('Error issuing certificate. Please try again.');
+                }
+            }
+        }
+
+        // Delete audit
+        async function deleteAudit(auditId) {
+            if (confirm('Are you sure you want to delete this audit? This action cannot be undone.')) {
+                try {
+                    // Delete audit
+                    const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            appSlug: appSlug,
+                            action: 'delete',
+                            collection: 'audits',
+                            conditions: {
+                                _id: auditId
+                            }
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Also delete associated evidence
+                        await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                appSlug: appSlug,
+                                action: 'delete',
+                                collection: 'evidence',
+                                conditions: {
+                                    auditId: auditId
+                                }
+                            })
+                        });
+                        
+                        alert('Audit deleted successfully!');
+                        hideModal('auditDetailsModal');
+                        loadAuditDashboard();
+                    }
+                } catch (error) {
+                    console.error('Error deleting audit:', error);
+                    alert('Error deleting audit. Please try again.');
+                }
+            }
+        }
+
+        // Create audit form submission
+        document.getElementById('createAuditForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const auditData = {
+                name: document.getElementById('auditName').value,
+                companyName: document.getElementById('companyName').value,
+                auditeeEmail: document.getElementById('auditeeEmail').value,
+                auditorEmail: document.getElementById('auditorEmail').value,
+                deadline: document.getElementById('auditDeadline').value,
+                status: 'in-progress',
+                createdAt: new Date().toISOString(),
+                createdBy: sessionStorage.getItem('userEmail') || 'admin@example.com'
+            };
+            
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'create',
+                        collection: 'audits',
+                        data: auditData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.reset();
+                    hideModal('createAuditModal');
+                    loadAuditDashboard();
+                    alert('Audit created successfully!');
+                }
+            } catch (error) {
+                console.error('Error creating audit:', error);
+                alert('Error creating audit. Please try again.');
+            }
+        });
+
+        // Library Management System Functions
+        
+        // Add book form submission
+        document.getElementById('addBookForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const book = {
+                title: document.getElementById('bookTitle').value,
+                author: document.getElementById('bookAuthor').value,
+                price: parseFloat(document.getElementById('bookPrice').value),
+                quantity: parseInt(document.getElementById('bookQuantity').value)
+            };
+            
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'create',
+                        collection: 'books',
+                        data: book
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    this.reset();
+                    hideModal('addBookModal');
+                    displayBooks();
+                    alert('Book added successfully!');
+                }
+            } catch (error) {
+                console.error('Error adding book:', error);
+                alert('Error adding book. Please try again.');
+            }
+        });
+
+        // Display books function
+        async function displayBooks() {
+            const bookList = document.getElementById('bookList');
+            bookList.innerHTML = '';
+            document.getElementById('bookListLoader').classList.remove('hidden');
+            
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'read',
+                        collection: 'books'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const books = result.result || [];
+                    
+                    if (books.length === 0) {
+                        bookList.innerHTML = `
+                            <div class="col-span-full text-center p-8">
+                                <p class="text-gray-500">No books available. Add some books to get started!</p>
+                            </div>
+                        `;
+                    } else {
+                        bookList.innerHTML = books.map(book => `
+                            <div class="bg-white p-4 rounded-lg shadow">
+                                <h3 class="text-xl font-semibold">${book.title}</h3>
+                                <p class="text-gray-600">By ${book.author}</p>
+                                <p class="text-teal-600 font-bold">₹${book.price}</p>
+                                <p class="text-gray-500">Stock: ${book.quantity}</p>
+                                <button onclick="purchaseBook('${book._id}')" 
+                                        class="mt-2 px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700 ${book.quantity === 0 ? 'opacity-50 cursor-not-allowed' : ''}"
+                                        ${book.quantity === 0 ? 'disabled' : ''}>
+                                    Purchase
+                                </button>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading books:', error);
+                bookList.innerHTML = `
+                    <div class="col-span-full text-center p-8">
+                        <p class="text-red-500">Error loading books. Please try again.</p>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('bookListLoader').classList.add('hidden');
+        }
+
+        // Purchase book function
+        async function purchaseBook(bookId) {
+            try {
+                // Fetch the book
+                const bookResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'read',
+                        collection: 'books',
+                        conditions: {
+                            _id: bookId
+                        }
+                    })
+                });
+                
+                const bookResult = await bookResponse.json();
+                
+                if (bookResult.success && bookResult.result.length > 0) {
+                    const book = bookResult.result[0];
+                    
+                    if (book.quantity > 0) {
+                        // Update book quantity
+                        const updateResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                appSlug: appSlug,
+                                action: 'update',
+                                collection: 'books',
+                                conditions: {
+                                    _id: bookId
+                                },
+                                data: {
+                                    quantity: book.quantity - 1
+                                }
+                            })
+                        });
+                        
+                        // Record purchase
+                        const purchaseResponse = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                appSlug: appSlug,
+                                action: 'create',
+                                collection: 'purchases',
+                                data: {
+                                    bookId: bookId,
+                                    bookTitle: book.title,
+                                    price: book.price,
+                                    purchaseDate: new Date().toISOString()
+                                }
+                            })
+                        });
+                        
+                        const [updateResult, purchaseResult] = await Promise.all([updateResponse.json(), purchaseResponse.json()]);
+                        
+                        if (updateResult.success && purchaseResult.success) {
+                            displayBooks();
+                            alert('Book purchased successfully!');
+                        }
+                    } else {
+                        alert('Book out of stock!');
+                    }
+                }
+            } catch (error) {
+                console.error('Error purchasing book:', error);
+                alert('Error purchasing book. Please try again.');
+            }
+        }
+
+        // Display purchase history function
+        async function displayPurchaseHistory() {
+            const purchaseHistoryDiv = document.getElementById('purchaseHistory');
+            purchaseHistoryDiv.innerHTML = '';
+            document.getElementById('purchaseHistoryLoader').classList.remove('hidden');
+            
+            try {
+                const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/mongodb', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer p50EcwUbYDSa3RODQhXCM5UwVAa2',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        appSlug: appSlug,
+                        action: 'read',
+                        collection: 'purchases'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const purchases = result.result || [];
+                    
+                    if (purchases.length === 0) {
+                        purchaseHistoryDiv.innerHTML = `
+                            <div class="bg-gray-50 p-4 rounded text-center">
+                                <p class="text-gray-500">No purchase history available.</p>
+                            </div>
+                        `;
+                    } else {
+                        // Sort purchases by date (newest first)
+                        purchases.sort((a, b) => new Date(b.purchaseDate) - new Date(a.purchaseDate));
+                        
+                        purchaseHistoryDiv.innerHTML = purchases.map(purchase => `
+                            <div class="bg-gray-50 p-3 rounded">
+                                <p class="font-semibold">${purchase.bookTitle}</p>
+                                <p class="text-gray-600">Price: ₹${purchase.price}</p>
+                                <p class="text-gray-500 text-sm">Purchased on: ${new Date(purchase.purchaseDate).toLocaleString()}</p>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading purchase history:', error);
+                purchaseHistoryDiv.innerHTML = `
+                    <div class="bg-red-50 p-4 rounded text-center">
+                        <p class="text-red-500">Error loading purchase history. Please try again.</p>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('purchaseHistoryLoader').classList.add('hidden');
+        }
+
+        // Event listener for purchase history button
+        document.querySelector('button[onclick="showModal(\'purchaseHistoryModal\')"]').addEventListener('click', displayPurchaseHistory);
+
+        // Initialize the application
+        async function initializeApp() {
+            await initializeDatabase();
+            displayBooks();
+        }
+
+        // Run initialization
+        initializeApp();
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
